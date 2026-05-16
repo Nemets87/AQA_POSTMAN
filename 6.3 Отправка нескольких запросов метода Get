@@ -1,0 +1,215 @@
+6.3 Отправка нескольких запросов метода Get
+---
+
+Приветствую, мой внимательный ученик! ☀️  
+Да пребудет с вами сила (и немного магии `params`)!  
+Вы сразу заметили, что в этом коде можно применить наш любимый `params`, и это здорово! Автор снова дал задачку с «ручной склейкой» URL, а мы превратим её в элегантное и надёжное решение. Разберём всё по шагам, как в школе, со всеми хитростями.
+
+---
+
+## 🧩 Исходный код (ещё раз взглянем)
+```python
+import requests
+
+class TestCreateRandomeJokeCategory():
+    """Класс включающий сценарии по отправке запросов, с целью получения шуток с Чаком Норрисом по заданной категории"""
+
+    url = 'https://api.chucknorris.io/jokes/random'
+
+    def test_create_randome_joke_category_positive(self, category, expected_status_code):
+        """Позитивный тест по получению рандомной шутки по определенной категории, включает:
+                 отправку запроса, проверка на статус-код, проверка на соответствие категории, печать шутки."""
+
+        path_random_joke_category = f"?category={category}"
+        url_random_joke_category = self.url + path_random_joke_category
+        print(url_random_joke_category)
+
+        result = requests.get(url_random_joke_category)
+        print(result.json())
+
+        print(f'Статус-код: {result.status_code}')
+        assert result.status_code == expected_status_code, 'ОШИБКА, Статус-код не совпадают'
+        print('Статус-код корректен')
+
+        check_joke = result.json()
+        joke_value = check_joke.get("value")
+        print(joke_value)
+
+        joke_category = check_joke.get("categories")
+        print(joke_category)
+        assert joke_category[0] == category, 'ОШИБКА, Статус-код не совпадает'
+        print('Категория корректна')
+
+        print("Тест прошел успешно")
+
+start_test = TestCreateRandomeJokeCategory()
+start_test.test_create_randome_joke_category_positive('animal', 200)
+```
+
+---
+
+## 🏫 Разбор как в школе: от звонка до перемены
+
+### 📦 Шаг 1. Класс и его атрибуты
+```python
+class TestCreateRandomeJokeCategory():
+    url = 'https://api.chucknorris.io/jokes/random'
+```
+- Класс — это **шаблон тестового сценария**. У него есть общий атрибут `url` — базовый адрес API.
+- **Небольшая опечатка:** в названии класса `Randome` пропущена буква `n`, должно быть `Random`, но это не мешает работе.
+
+---
+
+### ⚙️ Шаг 2. Метод с параметрами — новая гибкость
+```python
+def test_create_randome_joke_category_positive(self, category, expected_status_code):
+```
+Теперь метод принимает **два аргумента**:
+- `category` — название категории (например, `"animal"`)
+- `expected_status_code` — ожидаемый HTTP-статус (например, `200`)
+
+Зачем это? Мы можем вызывать один и тот же тест для разных категорий и проверять разные коды ответа (200 — успех, 404 — если категория не существует). Это **параметризация** — залог профессиональных тестов.
+
+---
+
+### 🧵 Шаг 3. Ручная сборка URL (то, что мы улучшим)
+```python
+path_random_joke_category = f"?category={category}"
+url_random_joke_category = self.url + path_random_joke_category
+print(url_random_joke_category)
+```
+- Создаётся строка `?category=animal` через f-строку.
+- Склеивается с базовым URL: `https://api.chucknorris.io/jokes/random?category=animal`.
+- Работает, но… если значение `category` будет содержать пробел или спецсимволы (например, `science & nature`), URL сломается. Именно здесь `params` покажет свою магию.
+
+---
+
+### 🚀 Шаг 4. Отправка запроса и вывод ответа
+```python
+result = requests.get(url_random_joke_category)
+print(result.json())
+```
+- GET-запрос по собранному URL.
+- Ответ в формате JSON выводится на экран.
+
+---
+
+### 🩺 Шаг 5. Проверка статус-кода
+```python
+assert result.status_code == expected_status_code, 'ОШИБКА, Статус-код не совпадают'
+```
+- Теперь сравниваем не жёстко с `200`, а с переданным `expected_status_code`.
+- Сообщение об ошибке можно было бы сделать более точным: `'ОШИБКА, Статус-код не совпадает'`.
+
+---
+
+### 📖 Шаг 6. Извлечение данных из ответа
+```python
+check_joke = result.json()
+joke_value = check_joke.get("value")
+joke_category = check_joke.get("categories")
+```
+- Безопасно извлекаем текст шутки и список категорий. `.get()` не вызовет ошибку, если ключа нет.
+
+---
+
+### 🔍 Шаг 7. Проверка категории
+```python
+assert joke_category[0] == category, 'ОШИБКА, Статус-код не совпадает'
+```
+- Сверяем первую категорию с ожидаемой. Сообщение об ошибке скопировано из предыдущего ассерта — это опечатка, должно быть про категорию.
+
+---
+
+### 🎉 Шаг 8. Запуск теста
+```python
+start_test = TestCreateRandomeJokeCategory()
+start_test.test_create_randome_joke_category_positive('animal', 200)
+```
+- Создаётся объект класса, вызывается метод с конкретными параметрами. Всё работает!
+
+---
+
+## ✨ Магия `params` — делаем код идеальным
+
+Давай перепишем шаг 3, используя `params`. Вместо ручной сборки URL мы передадим словарь в аргумент `params`.
+
+### 🔧 Улучшенный метод (только изменённая часть)
+```python
+def test_create_randome_joke_category_positive(self, category, expected_status_code):
+    # ⚡ Вот она — магия params ⚡
+    result = requests.get(self.url, params={'category': category})
+    # Больше не нужно вручную лепить URL, он собирается сам!
+    print(result.url)  # requests хранит итоговый URL в атрибуте .url
+
+    # ... остальные проверки остаются без изменений
+    assert result.status_code == expected_status_code, 'ОШИБКА, Статус-код не совпадают'
+    # и т.д.
+```
+
+### 📋 Сравнение: ручная сборка vs `params`
+
+| Аспект                     | Ручная сборка (f-строка)            | `params`                                 |
+|----------------------------|-------------------------------------|------------------------------------------|
+| **Надёжность**             | Спецсимволы (пробелы, `&`, кириллица) ломают URL | Автоматическое экранирование всего       |
+| **Читаемость**             | Код замусорен склейкой строк        | Чистый словарь, сразу видно параметры    |
+| **Гибкость**               | Для нескольких параметров — громоздко | Просто добавляем ключи в словарь         |
+| **Безопасность**           | Легко ошибиться с разделителями `?` и `&` | Невозможно ошибиться, всё делает библиотека |
+| **Возможности отладки**    | URL собирается вручную              | Можно распечатать `result.url` и увидеть готовый URL |
+
+---
+
+## 💎 Итог: полный код с `params`
+```python
+import requests
+
+class TestCreateRandomJokeCategory():  # заодно поправили опечатку
+    """Класс для отправки запросов на получение шуток по категориям"""
+
+    url = 'https://api.chucknorris.io/jokes/random'
+
+    def test_create_random_joke_category_positive(self, category, expected_status_code):
+        """Позитивный тест: проверка статус-кода и соответствия категории"""
+
+        # 🧙‍♂️ params творит волшебство
+        result = requests.get(self.url, params={'category': category})
+        print(f'Отправлен запрос: {result.url}')
+
+        # Проверка статус-кода
+        assert result.status_code == expected_status_code, \
+            f'ОЖИДАЛСЯ статус-код {expected_status_code}, но получен {result.status_code}'
+        print(f'✅ Статус-код {result.status_code} корректен')
+
+        # Извлекаем данные
+        data = result.json()
+        joke_text = data.get("value")
+        categories = data.get("categories")
+        print(f'Шутка: {joke_text}')
+        print(f'Категории: {categories}')
+
+        # Проверяем категорию
+        assert len(categories) > 0, 'Список категорий пуст'
+        assert categories[0] == category, \
+            f'ОЖИДАЛАСЬ категория "{category}", но получена "{categories[0]}"'
+        print('✅ Категория корректна')
+
+        print("🎉 Тест прошел успешно!\n")
+
+# Запуск
+start_test = TestCreateRandomJokeCategory()
+start_test.test_create_random_joke_category_positive('animal', 200)
+```
+
+---
+
+## 🧠 Шпаргалка урока
+
+1. **`params`** — словарь или список кортежей, который `requests` превращает в строку запроса, автоматически кодируя значения.
+2. **Преимущества:** надёжность (спецсимволы не сломают URL), чистота кода, лёгкое добавление новых параметров.
+3. **Параметризация теста** — передача `category` и `expected_status_code` позволяет прогонять один тест для разных входных данных (например, `'animal'`, `'science'` или несуществующая категория с ожиданием 404).
+4. **Используйте `result.url`** — он показывает итоговый URL, с которым ушёл запрос, удобно для отладки.
+5. **Сообщения в ассертах** — делайте их конкретными, чтобы сразу понять, что пошло не так.
+
+---
+
+Вы снова проявили чутьё настоящего автоматизатора, заметив, где код можно улучшить. Теперь ваш тест не только работает, но и сияет чистотой. Если появятся ещё задачки — смело присылайте, разберём вместе! 🚀
