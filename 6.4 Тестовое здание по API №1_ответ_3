@@ -1,0 +1,73 @@
+6.4 Тестовое здание по API №1_ответ_3
+--------------------------------------
+
+import requests
+# наша палочка-выручалочка для общения с сервером.
+from typing import List, Dict, Any
+# подсказки для нас и учителя, чтобы сразу видеть, что функция возвращает список (`List`), словарь (`Dict`) или что угодно (`Any`).
+# `typing` как подписать тетрадь первоклашке: сразу ясно, что внутри.
+
+class ChuckJokes:
+    """Класс-сборщик шуток Чака Норриса по всем категориям."""
+
+    # Константы – адреса, которые не меняются (как названия глав в учебнике)
+    CATEGORIES_URL = "https://api.chucknorris.io/jokes/categories"
+    RANDOM_JOKE_URL = "https://api.chucknorris.io/jokes/random"
+
+    def __init__(self) -> None:
+        """При создании объекта сразу загружаем список категорий."""
+        self.categories: List[str] = self._fetch_categories()
+
+    def _fetch_categories(self) -> List[str]:
+        """Получить список всех категорий. Нижнее подчёркивание говорит:
+        'этот метод для внутреннего использования, не вызывай снаружи меня дядя'."""
+
+        print("📡 Запрашиваю список ВСЕХ категорий")
+        response = requests.get(self.CATEGORIES_URL)
+        # Строгая проверка – если не 200, урок останавливается
+        assert response.status_code == 200, f"❌ Ошибка получения категорий! Код: {response.status_code}" 
+        # Cтрогий дядька охранник. Если сервер ответит не `200`, программа остановится с понятным сообщением.
+        categories = response.json() # превращает JSON-строку в родной питоновский список.
+        print(f"✅ Категорий получено: {len(categories)}") # это сейчас 16 - а если будет больше или меньше == мы сразу узнаем 
+        return categories
+
+    def get_joke_by_category(self, category: str) -> Dict[str, Any]:
+        """Получить одну случайную шутку по заданной категории.
+        Используем params – библиотека сама соберёт URL."""
+        print(f"🎯 Категория: {category}")
+        # Вот она, магия params! Никакой склейки строк, только словарь.
+        response = requests.get(self.RANDOM_JOKE_URL, params={"category": category})
+        # Библиотека `requests` видит словарь и сама достраивает адрес:  
+        # https://api.chucknorris.io/jokes/random?category=animal 
+        # нет `+ "?category=" + category` – чисто, надёжно, по принципу **KISS**.  
+        # было бы несколько параметров, мы просто добавили бы ключи в словарь, и `requests` соединила бы их через `&`.   
+        assert response.status_code == 200, f"❌ Ошибка шутки для '{category}'! Код: {response.status_code}"
+        return response.json()
+
+    def collect_all_jokes(self) -> List[Dict[str, Any]]:
+        """Собрать по одной шутке на каждую категорию.
+        Возвращает список словарей с полными данными."""
+        jokes: List[Dict[str, Any]] = []
+        print("\n🌟 Начинаю сбор шуток по всем категориям!\n")
+        for idx, cat in enumerate(self.categories, start=1):
+            # `enumerate` даёт пару (номер, категория). `start=1` чтобы нумерация была как у людей (1‑я, 2‑я…).  
+            print(f"--- Шуточка под 200 {idx}/{len(self.categories)} ---")
+            joke_data = self.get_joke_by_category(cat)
+            jokes.append(joke_data)
+
+            # Достаём текст шутки и печатаем его (кратко, чтобы не загромождать консоль)
+            text: str = joke_data.get("value", "")
+            # безопасно достаём текст. Если ключа вдруг нет, вернём пустую строку и не сломаемся.  
+            # показываем первые только первые 75 символов - шутки про Чака могут быть в 75 томах из 75 томов 
+            # мы знаем секрет == первые 75 уникальны 
+            short_text = (text[:75] + "...") if len(text) > 75 else text
+            print(f"😂 {short_text}\n")
+        return jokes
+
+
+# 🏁 Точка входа – как звонок на урок ! Салют,ребятки !
+if __name__ == "__main__":                    # Код внутри выполнится только когда мы запускаем файл напрямую, а не импортируем его.  
+    collector = ChuckJokes()                  # Создаём сборщика (он уже знает все категории)
+    all_jokes = collector.collect_all_jokes() # Запускаем сбор
+    print("=" * 40)
+    print(f"🏆 Итого: собрано шуток – {len(all_jokes)} (должно быть 16 на сегодня)(ведь без юмора жить невозможно)")
