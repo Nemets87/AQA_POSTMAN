@@ -49,6 +49,7 @@ class Test_new_location():
     print('✅Статус-код корректен')
 
     print(f'Статус-код: {result_post.status_code}') 
+
     if result_post.status_code == 200:
         print("Успешно! Мы создали локацию")
     else:
@@ -64,12 +65,13 @@ class Test_new_location():
 
     check_response_post = result_post.json()
     check_info_post = check_response_post.get("status")
-    print("Статус check_info_post")
+    print("❤️Статус check_info_post")
 
     status = check_response_post.get("status")    # получение значения обязательного поля ответа
     print(status)
+    print(check_response_post)
     assert status == 'OK', 'ОШИБКА, Поле Status некорректно'
-    print('Поле Status корректно')
+    print('❤️Поле Status корректно')
 
 
     place_id = check_response_post.get("place_id")   
