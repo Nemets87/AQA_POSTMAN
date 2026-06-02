@@ -79,9 +79,8 @@ class Test_new_location():
     print(f'Поле place_id: {place_id}')
     assert 'place_id' in check_response_post
     print("Поле place_id присутствует в теле ответа")
-
-
     print('\n' + '=='*50)
+
 
     """
     Проверка создания новой локации GET_metod
@@ -119,7 +118,8 @@ class Test_new_location():
     print("✅PUT_metod")
     base_url = 'https://rahulshettyacademy.com'    # базовая url
     key = '?key=qaclick123'                        # ключ допуска
-    put_resourse = '/maps/api/place/update/json'      # путь метода put
+    put_resourse = '/maps/api/place/update/json'   # путь метода put
+    
 
 
     put_url = base_url + put_resourse + key   
@@ -129,13 +129,13 @@ class Test_new_location():
     result_put = requests.put(put_url)
     print(result_put.text)
 
-    # print(f'Статус-код📀: {result_put.status_code}')
-    # assert result_put.status_code == 200, 'ОШИБКА, Статус-код не совпадают'
-    # print('✅Статус-код GET корректен')
-    # if result_put.status_code == 200:
-    #     print("Успешно! поверка создания новой локации прошла успешно")
-    # else:
-    #     print("Провал!")
+    print(f'Статус-код📀: {result_put.status_code}')
+    assert result_put.status_code == 200, 'ОШИБКА, Статус-код не совпадают'
+    print('✅Статус-код PUT корректен')
+    if result_put.status_code == 200:
+        print("Успешно! поверка создания новой локации прошла успешно")
+    else:
+        print("Провал!")
 
     json_put_location = { 
 
@@ -147,7 +147,7 @@ class Test_new_location():
 
     }
 
-    result_put = requests.put(put_url, json=json_put_location)     # отпрвака запроса put, который включает url и тело запроса
+    result_put = requests.put(put_url, json=json_put_location) # отпрвака запроса put, который включает url и тело запроса
     print(result_put.text)
   
 
@@ -163,10 +163,29 @@ class Test_new_location():
     check_put = result_put.json()
     check_info_put = check_put.get("msg")
     print(f'сообщение msg: {check_info_put}')
-    assert check_info_put == "Address successfully updated", 'ОШИБКА, сообщения ответа не совпадают'
+    assert check_info_put == "Address successfully updated", 'ОШИБКА, сообщения ответы не совпадают'
 
 
+       
+    """
+    Проверка изменения новой локации 
+    """
 
+    result_get = requests.get(get_url)
+    print(result_get.text)
+
+    print(f'Статус-код📀: {result_get.status_code}')
+    assert result_get.status_code == 200, 'ОШИБКА, Статус-код не совпадают'
+    print('✅Статус-код GET корректен')
+    if result_post.status_code == 200:
+        print("Успешно! поверка изменения новой локации прошла успешно")
+    else:
+        print("Провал!")
+
+    check_adress = result_get.json()
+    check_info_adress = check_adress.get("address")
+    print(f'сообщение msg: {check_info_adress}')
+    assert check_info_adress == "100 Lenina street, RU", 'ОШИБКА, адрес не совпадает'
 
 
 
