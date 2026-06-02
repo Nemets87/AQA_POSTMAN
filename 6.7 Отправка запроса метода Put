@@ -176,7 +176,7 @@ class Test_new_location():
 
     print(f'Статус-код📀: {result_get.status_code}')
     assert result_get.status_code == 200, 'ОШИБКА, Статус-код не совпадают'
-    print('✅Статус-код GET корректен')
+    print('✅Статус-код PUT корректен')
     if result_post.status_code == 200:
         print("Успешно! поверка изменения новой локации прошла успешно")
     else:
