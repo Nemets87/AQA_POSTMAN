@@ -1,0 +1,168 @@
+6.9 Тестовое здание по API №3_3
+-------------------------------
+
+## 🧑‍🏫 Учитель: Ага! Вот в чём дело – я вижу!
+
+Смотри внимательно на вывод GET:
+
+```json
+{'location': {'latitude': '-38.382494', 'longitude': '33.428362'}, 'accuracy': '50', 'name': 'Frontline house #1', ...}
+```
+
+**Нет поля `"status"`**! API возвращает **сами данные**, если место существует. Если бы место не существовало, он бы вернул `{"status": "INVALID_REQUEST", ...}`.
+
+Твоя проверка `assert response_json.get('status') == 'OK'` **падает**, потому что `status` вообще отсутствует. Но **место существует** – данные-то пришли!
+
+---
+
+## 🔧 Исправление (минимальное)
+
+В методе `get_location` нужно проверять:  
+- Если есть поле `status` – тогда оно должно быть `"OK"`  
+- Если поля `status` нет – значит, запрос успешен (это особенность этого конкретного API)
+
+Вот **исправленный метод get_location** (вставь его вместо старого):
+
+```python
+def get_location(self, place_id: str) -> Dict[str, Any]:
+    get_resource = '/maps/api/place/get/json'
+    extra = f"&place_id={place_id}"
+    url = self._build_url(get_resource, extra)
+    response_json = self._send_request('get', url)
+    
+    # 🧠 Фишка: этот API не возвращает 'status' при успехе, а возвращает сразу данные
+    if 'status' in response_json:
+        # Если поле status присутствует – значит, это либо ошибка, либо OK
+        assert response_json['status'] == 'OK', f"❌ Ошибка: {response_json}"
+    else:
+        # Если status отсутствует – считаем, что место существует (данные пришли)
+        print(f"✅ Место существует (данные получены, поле status отсутствует)")
+    
+    print(f"🔍 Место {place_id[:20]}... валидно")
+    return response_json
+```
+
+---
+
+## ✅ Полный исправленный код (готов к копированию)
+
+Вот весь код с этим исправлением и задержкой 1 секунда:
+
+```python
+import requests
+import time
+from typing import Dict, Any, List
+
+class LocationAPI:
+    def __init__(self, base_url: str, key: str) -> None:
+        self.base_url = base_url.rstrip('/')
+        self.key = key
+
+    def _build_url(self, resource: str, extra_params: str = "") -> str:
+        url = f"{self.base_url}{resource}{self.key}"
+        if extra_params:
+            url += extra_params
+        return url
+
+    def _send_request(self, method: str, url: str, json_data: Dict[str, Any] = None) -> Dict[str, Any]:
+        print(f"📨 {method.upper()} → {url}")
+        if method.lower() == 'post':
+            response = requests.post(url, json=json_data)
+        elif method.lower() == 'get':
+            response = requests.get(url)
+        else:
+            raise ValueError(f"Метод {method} не поддерживается")
+        assert response.status_code == 200, f"❌ HTTP {response.status_code}"
+        print(f"✅ HTTP 200 OK")
+        return response.json()
+
+    def create_location(self, location_data: Dict[str, Any]) -> Dict[str, Any]:
+        url = self._build_url('/maps/api/place/add/json')
+        response_json = self._send_request('post', url, json_data=location_data)
+        assert response_json.get('status') == 'OK', f"❌ Ошибка POST: {response_json}"
+        assert 'place_id' in response_json, "❌ Нет place_id"
+        print(f"📍 Создан place_id: {response_json['place_id']}")
+        return response_json
+
+    def get_location(self, place_id: str) -> Dict[str, Any]:
+        url = self._build_url('/maps/api/place/get/json', f"&place_id={place_id}")
+        response_json = self._send_request('get', url)
+        
+        # 🧠 Фишка: если нет поля 'status' – значит, успех (данные пришли)
+        if 'status' in response_json:
+            assert response_json['status'] == 'OK', f"❌ Ошибка: {response_json}"
+        else:
+            print("✅ Данные получены (поле status отсутствует – это нормально для этого API)")
+        
+        print(f"🔍 Место {place_id[:20]}... существует")
+        return response_json
+
+
+def generate_location_variant(index: int) -> Dict[str, Any]:
+    return {
+        "location": {"lat": -38.383494 + index * 0.001, "lng": 33.427362 + index * 0.001},
+        "accuracy": 50,
+        "name": f"Frontline house #{index}",
+        "phone_number": "(+91) 983 893 3937",
+        "address": f"29, side layout, cohen {index:02d}",
+        "types": ["shoe park", "shop"],
+        "website": "http://google.com",
+        "language": "French-IN"
+    }
+
+
+if __name__ == "__main__":
+    print("\n🌟 ЗАДАНИЕ: 5 локаций → файл → проверка GET 🌟")
+    api = LocationAPI('https://rahulshettyacademy.com', '?key=qaclick123')
+
+    # 1. POST 5 локаций
+    place_ids = []
+    for i in range(1, 6):
+        print(f"\n--- POST #{i} ---")
+        resp = api.create_location(generate_location_variant(i))
+        place_ids.append(resp['place_id'])
+        time.sleep(1)
+
+    # 2. Запись в файл
+    with open("place_ids.txt", "w") as f:
+        for pid in place_ids:
+            f.write(pid + "\n")
+    print(f"\n💾 Файл place_ids.txt сохранён ({len(place_ids)} записей)")
+
+    # 3. Чтение из файла
+    with open("place_ids.txt", "r") as f:
+        ids_from_file = [line.strip() for line in f if line.strip()]
+    print(f"📂 Прочитано из файла: {ids_from_file}")
+
+    # 4. GET проверка
+    print("\n🔍 Проверка через GET:")
+    all_ok = True
+    for idx, pid in enumerate(ids_from_file, 1):
+        print(f"\n--- GET #{idx} ---")
+        try:
+            api.get_location(pid)
+            print(f"✅ Место #{idx} OK")
+        except AssertionError as e:
+            print(f"❌ {e}")
+            all_ok = False
+        time.sleep(1)
+
+    print("\n" + "="*60)
+    if all_ok and len(ids_from_file) == 5:
+        print("🎉 ЗАДАНИЕ ВЫПОЛНЕНО! Все 5 мест из файла существуют.")
+    else:
+        print("⚠️ Есть проблемы, смотри вывод выше.")
+```
+
+---
+
+## 🧠 Объяснение для особенного ученика
+
+Почему твой старый код падал?  
+Ты написал `assert response_json.get('status') == 'OK'`.  
+Но API на GET **не возвращает поле `status`** при успехе – возвращает сразу словарь с данными.  
+В `response_json` нет ключа `"status"`, поэтому `.get('status')` возвращает `None`, и `None == 'OK'` → `False` → AssertionError.
+
+**Фикс:** проверяем, есть ли ключ `"status"`. Если есть – значит, это ответ с ошибкой или явным OK. Если нет – значит, пришли чистые данные, и это успех.
+
+Теперь всё должно работать! Запускай и радуйся. 💪
