@@ -1,0 +1,259 @@
+6.10 Тестовое задание по API №4_0
+----------------------------------
+## 🧑‍🏫 Учитель: новое задание — DELETE и фильтрация существующих локаций
+
+Здравствуй, мой особенный ученик! Мы уже умеем создавать локации (POST), сохранять их в файл и проверять GET-запросом. Теперь добавим удаление (DELETE) и создадим второй файл только с существующими `place_id`.
+
+### 📚 Задача по шагам
+
+1. **DELETE** — удалить 2-й и 4-й `place_id` из файла (локации физически удаляются на сервере).
+2. **GET** — проверить все 5 `place_id` из файла, определить, какие действительно существуют.
+3. Создать **новый файл №2**, куда записать только существующие `place_id` (их будет 3).
+4. Вывод в консоль должен быть красивым, с проверками и комментариями.
+5. Код должен быть компактным (циклы, методы, без дублирования).
+
+---
+
+### 🔧 Особенности DELETE для этого API
+
+API от Rahul Shetty требует **DELETE-запрос** с телом JSON, содержащим `place_id`.  
+URL: `https://rahulshettyacademy.com/maps/api/place/delete/json?key=qaclick123`  
+Тело: `{"place_id": "..."}`  
+Успешный ответ: `{"status": "OK"}`
+
+Добавим в наш класс `LocationAPI` метод `delete_location`.
+
+---
+
+## 💻 Полный код решения
+
+```python
+import requests
+import time
+from typing import Dict, Any, List
+
+class LocationAPI:
+    """Класс для работы с API локаций (создание, получение, удаление)"""
+    def __init__(self, base_url: str, key: str) -> None:
+        self.base_url = base_url.rstrip('/')
+        self.key = key
+
+    def _build_url(self, resource: str, extra_params: str = "") -> str:
+        url = f"{self.base_url}{resource}{self.key}"
+        if extra_params:
+            url += extra_params
+        return url
+
+    def _send_request(self, method: str, url: str, json_data: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Единый метод отправки запросов (POST, GET, DELETE)"""
+        print(f"📨 {method.upper()} → {url}")
+        if method.lower() == 'post':
+            response = requests.post(url, json=json_data)
+        elif method.lower() == 'get':
+            response = requests.get(url)
+        elif method.lower() == 'delete':
+            response = requests.delete(url, json=json_data)
+        else:
+            raise ValueError(f"Метод {method} не поддерживается")
+        assert response.status_code == 200, f"❌ HTTP {response.status_code}"
+        print(f"✅ HTTP 200 OK")
+        return response.json()
+
+    def create_location(self, location_data: Dict[str, Any]) -> Dict[str, Any]:
+        url = self._build_url('/maps/api/place/add/json')
+        response_json = self._send_request('post', url, json_data=location_data)
+        assert response_json.get('status') == 'OK', f"❌ Ошибка POST: {response_json}"
+        assert 'place_id' in response_json, "❌ Нет place_id"
+        print(f"📍 Создан place_id: {response_json['place_id']}")
+        return response_json
+
+    def get_location(self, place_id: str) -> Dict[str, Any]:
+        url = self._build_url('/maps/api/place/get/json', f"&place_id={place_id}")
+        response_json = self._send_request('get', url)
+        # Некоторые API не возвращают status при успехе
+        if 'status' in response_json:
+            assert response_json['status'] == 'OK', f"❌ Ошибка GET: {response_json}"
+        else:
+            print("✅ Данные получены")
+        return response_json
+
+    def delete_location(self, place_id: str) -> Dict[str, Any]:
+        """Удаляет локацию по place_id. Возвращает JSON ответа."""
+        url = self._build_url('/maps/api/place/delete/json')
+        payload = {"place_id": place_id}
+        response_json = self._send_request('delete', url, json_data=payload)
+        # Проверяем, что удаление прошло успешно
+        assert response_json.get('status') == 'OK', f"❌ Ошибка DELETE: {response_json}"
+        print(f"🗑️ Удалён place_id: {place_id[:20]}...")
+        return response_json
+
+
+def generate_location_variant(index: int) -> Dict[str, Any]:
+    """Генерирует уникальные данные для локации (чтобы не было дубликатов)."""
+    return {
+        "location": {"lat": -38.383494 + index * 0.001, "lng": 33.427362 + index * 0.001},
+        "accuracy": 50,
+        "name": f"Frontline house #{index}",
+        "phone_number": "(+91) 983 893 3937",
+        "address": f"29, side layout, cohen {index:02d}",
+        "types": ["shoe park", "shop"],
+        "website": "http://google.com",
+        "language": "French-IN"
+    }
+
+
+if __name__ == "__main__":
+    print("\n🌟 НОВОЕ ЗАДАНИЕ: DELETE → фильтрация → новый файл 🌟")
+    print("=" * 60)
+
+    api = LocationAPI('https://rahulshettyacademy.com', '?key=qaclick123')
+    
+    # ------------------- 1. СОЗДАЁМ 5 ЛОКАЦИЙ (как в прошлом задании) -------------------
+    print("\n🏗️ ШАГ 1: Создаём 5 локаций (POST)")
+    place_ids = []
+    for i in range(1, 6):
+        print(f"\n--- POST #{i} ---")
+        resp = api.create_location(generate_location_variant(i))
+        place_ids.append(resp['place_id'])
+        time.sleep(1)   # вежливость к серверу
+
+    # Сохраняем все 5 place_id в файл №1
+    filename1 = "place_ids.txt"
+    with open(filename1, "w") as f:
+        for pid in place_ids:
+            f.write(pid + "\n")
+    print(f"\n💾 Файл №1 '{filename1}' сохранён ({len(place_ids)} записей)")
+
+    # ------------------- 2. УДАЛЯЕМ 2-й И 4-й place_id (DELETE) -------------------
+    print("\n🗑️ ШАГ 2: Удаляем 2-ю и 4-ю локации (DELETE)")
+    # Читаем файл, получаем список ID
+    with open(filename1, "r") as f:
+        ids_from_file = [line.strip() for line in f if line.strip()]
+    
+    # Удаляем элементы с индексами 1 и 3 (0-индексация: 0-1-2-3-4 → 2-й = индекс 1, 4-й = индекс 3)
+    to_delete = [ids_from_file[1], ids_from_file[3]]  # второй и четвёртый
+    for pid in to_delete:
+        print(f"\n--- DELETE для {pid[:20]}... ---")
+        api.delete_location(pid)
+        time.sleep(1)
+
+    # ------------------- 3. ПРОВЕРЯЕМ ВСЕ 5 ЧЕРЕЗ GET И СОБИРАЕМ СУЩЕСТВУЮЩИЕ -------------------
+    print("\n🔍 ШАГ 3: Проверка всех 5 place_id (GET) и отбор существующих")
+    existing_ids = []
+    for idx, pid in enumerate(ids_from_file, start=1):
+        print(f"\n--- GET #{idx} (place_id: {pid[:20]}...) ---")
+        try:
+            api.get_location(pid)
+            print(f"✅ Локация #{idx} СУЩЕСТВУЕТ")
+            existing_ids.append(pid)   # добавляем в список выживших
+        except AssertionError as e:
+            print(f"❌ Локация #{idx} НЕ СУЩЕСТВУЕТ (удалена или неверна)")
+        time.sleep(1)
+
+    print(f"\n📊 Результат: из 5 локаций существуют {len(existing_ids)}: {existing_ids}")
+
+    # ------------------- 4. СОЗДАЁМ ФАЙЛ №2 ТОЛЬКО С СУЩЕСТВУЮЩИМИ PLACE_ID -------------------
+    filename2 = "existing_place_ids.txt"
+    with open(filename2, "w") as f:
+        for pid in existing_ids:
+            f.write(pid + "\n")
+    print(f"\n💾 Файл №2 '{filename2}' создан, содержит {len(existing_ids)} place_id.")
+
+    # ------------------- 5. ВЫВОДИМ СКРИНШОТЫ ОБОИХ ФАЙЛОВ -------------------
+    print("\n📸 Содержимое файла №1 (все 5 ID, некоторые удалены):")
+    print("-" * 50)
+    with open(filename1, "r") as f:
+        for i, line in enumerate(f, 1):
+            print(f"  {i}. {line.strip()}")
+    print("-" * 50)
+
+    print("\n📸 Содержимое файла №2 (только существующие):")
+    print("-" * 50)
+    with open(filename2, "r") as f:
+        for i, line in enumerate(f, 1):
+            print(f"  {i}. {line.strip()}")
+    print("-" * 50)
+
+    print("\n" + "=" * 60)
+    if len(existing_ids) == 3:
+        print("🎉 ЗАДАНИЕ ВЫПОЛНЕНО! 2-я и 4-я локации удалены, в файле №2 — 3 существующие.")
+    else:
+        print("⚠️ Что-то пошло не так. Должно быть 3 существующие локации.")
+```
+
+---
+
+## 📸 Скриншоты двух файлов (как они будут выглядеть)
+
+### Файл №1: `place_ids.txt` (все 5 ID, но 2-й и 4-й удалены на сервере)
+```
+5f72fb53d01968edf722d0a9e09f2bf4
+73e1a99fd723737b3c32f45d5034c760   ← удалён
+1022f8232fc5b05fd228ce3f045a4359
+7894c24f7067a22bbe1226815b875da8   ← удалён
+03f5b023c597ac281ba76eb6cb43407c
+```
+
+### Файл №2: `existing_place_ids.txt` (только существующие)
+```
+5f72fb53d01968edf722d0a9e09f2bf4
+1022f8232fc5b05fd228ce3f045a4359
+03f5b023c597ac281ba76eb6cb43407c
+```
+
+> **Примечание:** Реальные `place_id` будут другими, но структура та же.
+
+---
+
+## 🧠 Объяснение для школьников (что нового)
+
+1. **DELETE-запрос**  
+   В методе `_send_request` мы добавили ветку `'delete'`, которая вызывает `requests.delete(url, json=json_data)`. Тело запроса — словарь `{"place_id": "..."}`.
+
+2. **Выбор 2-го и 4-го ID**  
+   В Python индексация начинается с 0:  
+   - 1-й элемент → индекс 0  
+   - 2-й элемент → индекс 1  
+   - 3-й → 2  
+   - 4-й → 3  
+   - 5-й → 4  
+   Поэтому удаляем `ids_from_file[1]` и `ids_from_file[3]`.
+
+3. **Проверка существования**  
+   В цикле GET мы оборачиваем вызов `api.get_location()` в `try-except`, потому что если локация удалена, метод выбросит `AssertionError`. Мы ловим его и не добавляем такой ID в список существующих.
+
+4. **Новый файл**  
+   Создаём `existing_place_ids.txt` и записываем туда только те `place_id`, которые прошли проверку.
+
+5. **Минимум строк**  
+   - Все запросы проходят через единый `_send_request`.  
+   - Проверка всех 5 ID — один цикл.  
+   - Генерация данных — одна функция.  
+   - Код читаем благодаря комментариям и аннотациям.
+
+---
+
+## ✅ Проверка корректности
+
+- После DELETE: 2-я и 4-я локации на сервере больше не существуют.  
+- GET для них вернёт `{"status": "INVALID_REQUEST"}` (или не вернёт `status` вообще), что вызовет `AssertionError`.  
+- Остальные три локации существуют → попадают в файл №2.  
+- В консоли вы увидите пошаговые отчёты.
+
+---
+
+## 🖼️ Как получить скриншот двух файлов
+
+1. Запусти код.  
+2. После выполнения открой папку с программой.  
+3. Там появятся файлы `place_ids.txt` и `existing_place_ids.txt`.  
+4. Открой их в любом текстовом редакторе (Блокнот, VS Code).  
+5. Сделай скриншот (например, инструментом «Ножницы» в Windows или `Shift+Cmd+4` на Mac).  
+6. Вставь скриншот в ответ.
+
+> Я, как текстовая модель, не могу приложить реальный скриншот, но ты легко сделаешь его сам. Выглядеть он будет как два текстовых окна с перечисленными выше ID.
+
+---
+
+**Задание выполнено! Сила учителя теперь и в DELETE-запросах.** 😎  
+Если появятся вопросы — смело спрашивай.
