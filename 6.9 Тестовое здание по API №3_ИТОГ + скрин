@@ -1,0 +1,315 @@
+6.9 Тестовое здание по API №3_ИТОГ + скрин
+------------------------------------------
+import requests
+import time
+from typing import Dict, Any, List
+
+""" 
+Класс, который будет содержать все методы для работы с API.
+"""
+class LocationAPI:# Класс LocationAPI — наша «библиотека запросов»
+    def __init__(self, base_url: str, key: str) -> None:
+        # rstrip('/') — убирает лишний слеш в конце, чтобы не было двойного слеша в URL. Фишка: маленькая леталь, которая предотвращает ошибки.
+        self.base_url = base_url.rstrip('/') 
+        # key — секретный ключ, чтобы секретарь понял, что мы свои (?key=qaclick123).
+        self.key = key
+    # Подчёркивание в начале — это договорённость: «этот метод внутренний, не вызывай его снаружи класса».
+    # Как личная записная книжка учителя — она не для учеников, а для внутренних нужд.
+    def _build_url(self, resource: str, extra_params: str = "") -> str: 
+        url = f"{self.base_url}{resource}{self.key}" # resource — конкретный путь, например /maps/api/place/add/json (какой кабинет школы нам нужен).
+        if extra_params: # extra_params — дополнительные параметры (например, &place_id=123).
+            url += extra_params
+        return url
+    # _send_request — единый метод для всех запросов
+    # Мы написали один метод для всех запросов, а не дублируем код для POST и GET.(Don’t Repeat Yourself == не повторяйся).
+    def _send_request(self, method: str, url: str, json_data: Dict[str, Any] = None) -> Dict[str, Any]:
+        print(f"📨 {method.upper()} → {url}")
+        if method.lower() == 'post':
+            response = requests.post(url, json=json_data)
+        elif method.lower() == 'get':
+            response = requests.get(url)
+        else:
+            raise ValueError(f"Метод {method} не поддерживается")
+        assert response.status_code == 200, f"❌ HTTP {response.status_code}"
+        print(f"✅ HTTP 200 OK")
+        return response.json()
+    # create_location — создание новой локации (POST)
+    def create_location(self, location_data: Dict[str, Any]) -> Dict[str, Any]:
+        # location_data — словарь с координатами, именем, адресом и т.д. (данные новой локации).
+        url = self._build_url('/maps/api/place/add/json')
+        response_json = self._send_request('post', url, json_data=location_data)
+        # После отправки запроса проверяем, что в ответе пришло поле status со значением 'OK'.
+        assert response_json.get('status') == 'OK', f"❌ Ошибка POST: {response_json}"
+        # Также проверяем, что есть поле place_id (уникальный идентификатор созданной локации).
+        assert 'place_id' in response_json, "❌ Нет place_id"
+        print(f"📍 Создан place_id: {response_json['place_id']}")
+        return response_json
+    # get_location — получение локации по её ID (GET)
+    def get_location(self, place_id: str) -> Dict[str, Any]:
+        url = self._build_url('/maps/api/place/get/json', f"&place_id={place_id}")
+        response_json = self._send_request('get', url)
+        # 🧠_Фишка: если нет поля 'status' – значит, успех (данные пришли)
+        # 🧠_Проверяет: есть ли в ответе ключ 'status'? Если есть — тогда он должен быть равен 'OK'. 
+        # 🧠_Если нет — значит, ответ уже содержит данные, и всё хорошо.
+        if 'status' in response_json:
+            assert response_json['status'] == 'OK', f"❌ Ошибка: {response_json}"
+        else:
+            print("✅ Данные получены (поле status отсутствует – это нормально для этого API)")
+        
+        print(f"🔍 Место {place_id[:20]}... существует")
+        return response_json
+
+# 🧪 Функция-генератор уникальных локаций
+def generate_location_variant(index: int) -> Dict[str, Any]:
+    return {
+        "location": {"lat": -38.383494 + index * 0.001, "lng": 33.427362 + index * 0.001},
+        "accuracy": 50,
+        "name": f"Frontline house #{index}",
+        "phone_number": "(+91) 983 893 3937",
+        "address": f"29, side layout, cohen {index:02d}",
+        "types": ["shoe park", "shop"],
+        "website": "http://google.com",
+        "language": "French-IN"
+    }
+
+# 🎬 Основная логика программы (аля сценарий нашего фильма)
+if __name__ == "__main__":
+    print("\n🌟 ЗАДАНИЕ: 5 локаций → файл → проверка GET 🌟")
+    api = LocationAPI('https://rahulshettyacademy.com', '?key=qaclick123')
+
+    # 1. POST 5 локаций
+    place_ids = []
+    for i in range(1, 6):
+        print(f"\n--- POST #{i} ---")
+        resp = api.create_location(generate_location_variant(i))
+        place_ids.append(resp['place_id']) # Полученный place_id сохраняем в список.
+        time.sleep(1)
+
+    # 2. Запись в файл
+    with open("place_ids.txt", "w") as f:
+        for pid in place_ids: 
+            f.write(pid + "\n") # Пишем каждый place_id на отдельной строке (добавляем \n — символ перевода строки).
+    print(f"\n💾 Файл place_ids.txt сохранён ({len(place_ids)} записей)")
+
+    # 3. Чтение из файла
+    with open("place_ids.txt", "r") as f:
+        ids_from_file = [line.strip() for line in f if line.strip()] # Оно проходит по каждой строке файла, удаляет пробелы и переносы (strip()),
+                                                                     # и если строка не пустая — добавляет в список.
+    print(f"📂 Прочитано из файла: {ids_from_file}")
+
+    # 4. GET проверка
+    print("\n🔍 Проверка через GET:")
+    all_ok = True
+    for idx, pid in enumerate(ids_from_file, 1):
+        print(f"\n--- GET #{idx} ---")
+        try:
+            api.get_location(pid)
+            print(f"✅ Место #{idx} OK")
+        except AssertionError as e:
+            print(f"❌ {e}")
+            all_ok = False
+        time.sleep(1)
+
+ # 🆕 Шаг 5: Вывод содержимого файла (скриншот)
+    print("\n📸 Содержимое файла place_ids.txt (текстовый скриншот):")
+    print("-" * 50)
+    with open("place_ids.txt", "r") as f:
+        for idx, line in enumerate(f, 1):
+            print(f"  {idx:2}. {line.strip()}")
+    print("-" * 50)
+
+    # Итог
+    print("\n" + "=" * 60)
+    if all_ok and len(ids_from_file) == 5:
+        print("🎉 ЗАДАНИЕ ВЫПОЛНЕНО! Все 5 мест из файла существуют.")
+    else:
+        print("⚠️ Есть проблемы, смотри вывод выше.")
+
+
+## 📸 Учитель: добавляем «скриншот» файла (вывод содержимого в консоль)
+
+Ты хочешь в конце программы показать **содержимое файла** `place_ids.txt` — это как сделать скриншот, только текстовый. Отличная идея для наглядности!
+
+Добавим в конец программы блок, который открывает файл и печатает его содержимое.
+
+---
+
+### 🔧 Дополненный код (только новая часть)
+
+После шага 4 (проверки GET) добавим:
+
+```python
+# 5. Выводим "скриншот" файла place_ids.txt
+print("\n📸 Содержимое файла place_ids.txt:")
+print("-" * 40)
+with open("place_ids.txt", "r") as f:
+    for line in f:
+        print(f"  {line.strip()}")  # печатаем каждую строку без лишних отступов
+print("-" * 40)
+```
+
+Если хочешь ещё красивее — можно добавить нумерацию строк:
+
+```python
+print("\n📸 Содержимое файла place_ids.txt:")
+with open("place_ids.txt", "r") as f:
+    lines = f.readlines()
+    for i, line in enumerate(lines, 1):
+        print(f"  {i}. {line.strip()}")
+```
+
+---
+
+### 📝 Полный итоговый код (с выводом файла)
+
+Вот весь код с добавленным выводом содержимого в самом конце (перед итоговым сообщением):
+
+```python
+import requests
+import time
+from typing import Dict, Any, List
+
+class LocationAPI:
+    def __init__(self, base_url: str, key: str) -> None:
+        self.base_url = base_url.rstrip('/')
+        self.key = key
+
+    def _build_url(self, resource: str, extra_params: str = "") -> str:
+        url = f"{self.base_url}{resource}{self.key}"
+        if extra_params:
+            url += extra_params
+        return url
+
+    def _send_request(self, method: str, url: str, json_data: Dict[str, Any] = None) -> Dict[str, Any]:
+        print(f"📨 {method.upper()} → {url}")
+        if method.lower() == 'post':
+            response = requests.post(url, json=json_data)
+        elif method.lower() == 'get':
+            response = requests.get(url)
+        else:
+            raise ValueError(f"Метод {method} не поддерживается")
+        assert response.status_code == 200, f"❌ HTTP {response.status_code}"
+        print(f"✅ HTTP 200 OK")
+        return response.json()
+
+    def create_location(self, location_data: Dict[str, Any]) -> Dict[str, Any]:
+        url = self._build_url('/maps/api/place/add/json')
+        response_json = self._send_request('post', url, json_data=location_data)
+        assert response_json.get('status') == 'OK', f"❌ Ошибка POST: {response_json}"
+        assert 'place_id' in response_json, "❌ Нет place_id"
+        print(f"📍 Создан place_id: {response_json['place_id']}")
+        return response_json
+
+    def get_location(self, place_id: str) -> Dict[str, Any]:
+        url = self._build_url('/maps/api/place/get/json', f"&place_id={place_id}")
+        response_json = self._send_request('get', url)
+        # Если поле status есть — проверяем, иначе считаем успехом
+        if 'status' in response_json:
+            assert response_json['status'] == 'OK', f"❌ Ошибка: {response_json}"
+        else:
+            print("✅ Данные получены (поле status отсутствует – норма)")
+        print(f"🔍 Место {place_id[:20]}... существует")
+        return response_json
+
+
+def generate_location_variant(index: int) -> Dict[str, Any]:
+    return {
+        "location": {"lat": -38.383494 + index * 0.001, "lng": 33.427362 + index * 0.001},
+        "accuracy": 50,
+        "name": f"Frontline house #{index}",
+        "phone_number": "(+91) 983 893 3937",
+        "address": f"29, side layout, cohen {index:02d}",
+        "types": ["shoe park", "shop"],
+        "website": "http://google.com",
+        "language": "French-IN"
+    }
+
+
+if __name__ == "__main__":
+    print("\n🌟 ЗАДАНИЕ: 5 локаций → файл → проверка GET 🌟")
+    api = LocationAPI('https://rahulshettyacademy.com', '?key=qaclick123')
+
+    # Шаг 1: POST 5 локаций
+    place_ids = []
+    for i in range(1, 6):
+        print(f"\n--- POST #{i} ---")
+        resp = api.create_location(generate_location_variant(i))
+        place_ids.append(resp['place_id'])
+        time.sleep(1)
+
+    # Шаг 2: Запись в файл
+    with open("place_ids.txt", "w") as f:
+        for pid in place_ids:
+            f.write(pid + "\n")
+    print(f"\n💾 Файл place_ids.txt сохранён ({len(place_ids)} записей)")
+
+    # Шаг 3: Чтение из файла
+    with open("place_ids.txt", "r") as f:
+        ids_from_file = [line.strip() for line in f if line.strip()]
+    print(f"📂 Прочитано из файла: {ids_from_file}")
+
+    # Шаг 4: GET проверка
+    print("\n🔍 Проверка через GET:")
+    all_ok = True
+    for idx, pid in enumerate(ids_from_file, 1):
+        print(f"\n--- GET #{idx} ---")
+        try:
+            api.get_location(pid)
+            print(f"✅ Место #{idx} OK")
+        except AssertionError as e:
+            print(f"❌ {e}")
+            all_ok = False
+        time.sleep(1)
+
+    # 🆕 Шаг 5: Вывод содержимого файла (скриншот)
+    print("\n📸 Содержимое файла place_ids.txt (текстовый скриншот):")
+    print("-" * 50)
+    with open("place_ids.txt", "r") as f:
+        for idx, line in enumerate(f, 1):
+            print(f"  {idx:2}. {line.strip()}")
+    print("-" * 50)
+
+    # Итог
+    print("\n" + "=" * 60)
+    if all_ok and len(ids_from_file) == 5:
+        print("🎉 ЗАДАНИЕ ВЫПОЛНЕНО! Все 5 мест из файла существуют.")
+    else:
+        print("⚠️ Есть проблемы, смотри вывод выше.")
+```
+
+---
+
+### 📸 Пример вывода в консоль после добавления
+
+```
+📸 Содержимое файла place_ids.txt (текстовый скриншот):
+--------------------------------------------------
+   1. 5f72fb53d01968edf722d0a9e09f2bf4
+   2. 73e1a99fd723737b3c32f45d5034c760
+   3. 1022f8232fc5b05fd228ce3f045a4359
+   4. 7894c24f7067a22bbe1226815b875da8
+   5. 03f5b023c597ac281ba76eb6cb43407c
+--------------------------------------------------
+```
+
+---
+
+### 🧠 Объяснение для школьников (10 класс)
+
+**Что мы сделали?**  
+В самом конце программы мы **ещё раз открыли файл** `place_ids.txt`, прочитали его содержимое и напечатали каждую строку с номером.
+
+**Зачем это нужно?**  
+- Чтобы **визуально убедиться**, что файл действительно содержит пять `place_id`.  
+- Это помогает при отладке: вы сразу видите, что записалось.  
+- Учитель (или проверяющий) может легко сверить вывод с ожидаемым результатом.
+
+**Почему это называют «скриншотом»?**  
+В тестировании «скриншот» — это снимок экрана. В консоли мы делаем «текстовый снимок» содержимого файла. Шутка программистов: «вот тебе скриншот, только текстовый».
+
+**Важный момент:**  
+Файл открывается второй раз — сначала для чтения в список `ids_from_file`, потом для вывода на экран. Это нормально: файл можно открывать много раз, он от этого не портится. Главное — использовать `with`, чтобы он закрывался автоматически.
+
+---
+
+Теперь у тебя есть полный код с **текстовым скриншотом** файла. Запускай и показывай одноклассникам — они оценят! 😎
