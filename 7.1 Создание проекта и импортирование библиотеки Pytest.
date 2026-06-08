@@ -1,0 +1,21 @@
+7.1 Создание проекта и импортирование библиотеки Pytest.
+---------------------------------------------------------
+
+
+import pytest
+
+
+@pytest.fixture()
+def set_up():
+    print("_Enter the system")
+
+def test_sending_mail(set_up):
+    print("_OK")
+
+def test_sending_mail_2(set_up):
+    print("_Send letter is OK")
+
+def test_sending_mail_3(set_up):
+    print("_Send letter is OK")
+
+test_sending_mail(set_up)
