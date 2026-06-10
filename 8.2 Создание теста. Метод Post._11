@@ -1,0 +1,21 @@
+8.2 Создание теста. Метод Post._11
+----------------------------------
+
+import requests
+
+url = "https://reqres.in/api/register"
+headers = {
+    "x-api-key": "free_user_3DU3H2bw6CtsSnSoYA8Ncx2XzzQ"
+}
+json_post = {
+    "email": "eve.holt@reqres.in",
+    "password": "pistol"
+}
+
+response = requests.post(url, json=json_post, headers=headers)
+
+print(response.status_code)   # 201
+print(response.ok)            # True
+print(response.json()["id"])  # сгенерированный ID, например "123"
+print(response.text)  
+print(len(response.json()["token"]))
