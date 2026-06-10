@@ -1,0 +1,25 @@
+8.2 Создание теста. Метод Post._12
+----------------------------------
+
+import requests
+
+url = "https://petstore.swagger.io/v2/user/createWithArray"
+json_post = [
+    {
+        "id": 1,
+        "username": "testuser",
+        "firstName": "Ivan",
+        "lastName": "Petrov",
+        "email": "ivan@example.com",
+        "password": "secret123",
+        "phone": "+79991234567",
+        "userStatus": 1
+    }
+]
+
+response = requests.post(url, json=json_post)
+
+print(response.status_code)
+print(response.text)
+
+print(response.json()["message"])
