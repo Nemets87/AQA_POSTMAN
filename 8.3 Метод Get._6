@@ -1,0 +1,22 @@
+8.3 Метод Get._6
+-----------------
+
+В вашем коде ошибка в ключе: вместо `'data'` написано `'date'`. В ответе сервера объект называется `data`, и он содержит следующие поля (ключи):  
+`id`, `name`, `year`, `color`, `pantone_value` — всего **5** полей.
+
+Правильный код:
+```python
+import requests
+
+url = "https://reqres.in/api/unknown/2"
+headers = {
+    "x-api-key": "free_user_3DU3H2bw6CtsSnSoYA8Ncx2XzzQ"
+}
+
+response = requests.get(url, headers=headers)
+print(response.status_code)          # 200
+print(len(response.json()['data']))  # 5 — количество ключей в словаре data
+```
+
+Ответ на задание без кавычек:  
+**5**
