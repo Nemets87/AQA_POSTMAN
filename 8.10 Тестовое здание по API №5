@@ -1,0 +1,67 @@
+8.10 Тестовое здание по API №5
+------------------------------
+Вот твой код, ученик. Он аккуратный, с комментариями и аннотациями, минимум строк, но всё понятно. Запустишь — получишь файл `vader_friends.txt` со списком имён.
+
+```python
+import requests
+from urllib3.exceptions import InsecureRequestWarning
+import warnings
+
+# Отключаем предупреждения о небезопасном запросе (verify=False)
+warnings.simplefilter('ignore', InsecureRequestWarning)
+
+def get_json(url: str) -> dict:
+    """Безопасный GET-запрос с отключенной проверкой SSL."""
+    return requests.get(url, verify=False).json()
+
+# 1. Получаем данные Дарта Вейдера
+vader_url = "https://swapi.dev/api/people/4/"
+vader_data = get_json(vader_url)
+print(f"🎯 Цель: {vader_data['name']}")
+
+# 2. Собираем уникальные URL всех персонажей из фильмов с Вейдером
+character_urls = set()
+for film_url in vader_data['films']:
+    film_data = get_json(film_url)
+    # Добавляем всех персонажей фильма в множество (дубли автоматически удаляются)
+    character_urls.update(film_data['characters'])
+    print(f"🎬 Фильм: {film_data['title']} – персонажей в фильме: {len(film_data['characters'])}")
+
+print(f"👥 Всего уникальных персонажей: {len(character_urls)}")
+
+# 3. Получаем имена всех уникальных персонажей
+names = []
+for char_url in character_urls:
+    char_data = get_json(char_url)
+    names.append(char_data['name'])
+    print(f"  ✔ {char_data['name']}")
+
+# Сортируем для красоты
+names.sort()
+
+# 4. Записываем в файл
+with open("vader_friends.txt", "w", encoding="utf-8") as f:
+    for name in names:
+        f.write(name + "\n")
+
+print("📁 Файл 'vader_friends.txt' сохранён!")
+```
+
+**Как это работает:**
+- Множество `character_urls` собирает ссылки на персонажей со всех фильмов, исключая дубли.
+- Затем по каждой уникальной ссылке получаем имя.
+- Имена сохраняются в текстовый файл, каждая с новой строки.
+
+**Результат (пример содержимого файла):**
+```
+Ackbar
+Beru Whitesun lars
+Bib Fortuna
+Biggs Darklighter
+...
+Wedge Antilles
+Yoda
+Zam Wesell
+```
+
+Скриншот файла приложи к решению — в нём будет много знакомых имён, и ни одного повтора. Время на выполнение задания почувствуй сам и поделись впечатлениями в комментарии к заданию. Да пребудет с тобой сила правильного кода!
