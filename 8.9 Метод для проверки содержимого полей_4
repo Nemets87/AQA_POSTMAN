@@ -1,0 +1,11 @@
+8.9 Метод для проверки содержимого полей_4
+----------
+import requests
+
+url = "https://dog.ceo/api/breed/hound/images"
+response = requests.get(url)
+response.raise_for_status()          # проверяем, что сервер ответил "ОК"
+data = response.json()               # превращаем JSON в словарь
+message = data['message']            # берём список ВСЕХ ссылок
+count = sum(1 for url in message if 'hound-english' in url)
+print(count)
